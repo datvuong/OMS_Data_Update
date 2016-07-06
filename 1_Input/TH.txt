@@ -1,0 +1,3 @@
+serverIP <- "10.50.50.158"
+user <- "dat_all_bi"
+password <- "rqp2T5kk5R"

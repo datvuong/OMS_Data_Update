@@ -1,0 +1,3 @@
+serverIP <- "10.18.17.142"
+user <- "sinh_all_bi"
+password <- "u5DHjeQrS8dCHMey"
