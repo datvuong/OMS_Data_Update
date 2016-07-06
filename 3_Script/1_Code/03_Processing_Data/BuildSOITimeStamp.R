@@ -1,0 +1,64 @@
+BuildSOITimeStampMonth <- function(venture, month) {
+  suppressMessages({
+    require(dplyr)
+    require(tools)
+    require(magrittr)
+    require(methods)
+    require(logging)
+    require(data.table)
+  })
+  
+  functionName <- "BuildSOITimeStamp"
+  flog.info(paste("Function", functionName, venture, '-', month, "- started"), name = reportName)
+  
+  output <- tryCatch({
+    
+    if (class(month) == character) {
+      if (!grepl("^\\d{6}$", month))
+        return(FALSE)
+    } else {
+      month <- tryCatch({
+        format(as.Date(month, '%Y-%m-%d'), '%Y%m')
+      }, error = function(e){
+        return(FALSE)
+      })
+    }
+    
+    montData <- ims_
+    
+    soiTimestampData <- soiHistoryData %>%
+      arrange(fk_sales_order_item, desc(created_at)) %>%
+      mutate(uniqueKey = paste0(fk_sales_order_item, fk_sales_order_item_status)) %>%
+      filter(!duplicated(uniqueKey)) %>%
+      select(fk_sales_order_item, fk_sales_order_item_status, created_at) %>%
+      spread(fk_sales_order_item_status, created_at)
+    soiTimestampData <- data.table(soiTimestampData)
+    for (iStatus in c('50', '76', '5', '9', '27', '68')) {
+      if (!(iStatus %in% names(soiTimestampData))) {
+        soiTimestampData[, (iStatus) := as.POSIXct(NA)]
+      }
+    }
+    soiTimestampData <- tbl_df(soiTimestampData)
+    
+    soiTimestampData %<>%
+      select(fk_sales_order_item, 
+             rts_wh = `50`,
+             rts_ds = `76`,
+             shipped =`5`,
+             cancelled = `9`,
+             delivered = `27`,
+             being_returned = `68`) %>%
+      mutate(rts = as.POSIXct(ifelse(is.na(rts_wh), rts_ds, rts_wh),
+                              origin = "1970-01-01 ICT")) %>%
+      select(-c(rts_wh, rts_ds))
+    
+    tbl_df(soiTimestampData)
+    
+  }, error = function(err) {
+    flog.info(paste(functionName, err, sep = " - "), name = reportName)
+  }, finally = {
+    flog.info(paste(functionName, "ended"), name = reportName)
+  })
+  
+  output
+}
